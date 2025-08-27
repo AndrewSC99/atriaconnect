@@ -1,0 +1,813 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(PATIENT)
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // App relations
+  patient      Patient?
+  nutritionist Nutritionist?
+  messages     Message[]
+  notifications Notification[]
+  twoFactorAuth TwoFactorAuth?
+  passwordResets PasswordReset[]
+  loginAttempts LoginAttempt[]
+  auditLogs    AuditLog[]
+}
+
+model Patient {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  birthDate         DateTime?
+  age               Int?
+  height            Float?
+  weight            Float?
+  initialWeight     Float?
+  currentWeight     Float?
+  goalWeight        Float?
+  gender            Gender?
+  objective         String?
+  restrictions      String?
+  medicalConditions String?
+  phone             String?
+  address           String?
+  status            PatientStatus @default(ACTIVE)
+  adherenceScore    Int?
+  lastConsultation  DateTime?
+  lastMetricUpdate  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nutritionist     Nutritionist?      @relation(fields: [nutritionistId], references: [id])
+  nutritionistId   String?
+  diets            Diet[]
+  metrics          Metric[]
+  energyExpenditures EnergyExpenditure[]
+  appointments     Appointment[]
+  foodLogs         FoodLog[]
+  checklists       Checklist[]
+  medicalRecords   MedicalRecord[]
+  conversations    Conversation[]
+}
+
+model Nutritionist {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  crn         String   @unique // Registro profissional
+  specialty   String?
+  experience  Int?     // Anos de experiência
+  bio         String?
+  phone       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patients        Patient[]
+  diets           Diet[]
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+  recipes         Recipe[]
+  conversations   Conversation[]
+  sharedDiets     DietShare[]
+  mealTemplates   MealTemplate[]
+  foodUsageHistory FoodUsageHistory[]
+}
+
+model Diet {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime?
+  
+  // Metas nutricionais
+  targetCalories  Int?
+  targetProtein   Float?
+  targetCarbs     Float?
+  targetFat       Float?
+  targetFiber     Float?
+  targetSodium    Float?
+  targetSugar     Float?
+  
+  // Valores calculados atuais
+  calories        Int?
+  protein         Float?
+  carbs           Float?
+  fat             Float?
+  fiber           Float?
+  sodium          Float?
+  sugar           Float?
+  
+  // Configurações
+  isActive        Boolean  @default(true)
+  isTemplate      Boolean  @default(false)
+  templateName    String?
+  templateCategory DietTemplateCategory @default(CUSTOM)
+  
+  // Metadados
+  adherenceScore  Float?   // 0-100
+  tags            String?  // JSON array
+  notes           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  patient         Patient?     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId       String?
+  nutritionist    Nutritionist @relation(fields: [nutritionistId], references: [id])
+  nutritionistId  String
+  meals           DietMeal[]
+  sharedWith      DietShare[]
+  analytics       DietAnalytics[]
+}
+
+model DietMeal {
+  id          String   @id @default(cuid())
+  dietId      String
+  mealType    MealType
+  time        String   // HH:MM format
+  name        String
+  description String?
+  
+  // Valores nutricionais calculados
+  calories    Int?
+  protein     Float?
+  carbs       Float?
+  fat         Float?
+  fiber       Float?
+  sodium      Float?
+  sugar       Float?
+  
+  // Micronutrientes importantes
+  calcium     Float?
+  iron        Float?
+  vitaminC    Float?
+  vitaminA    Float?
+  
+  // Metadados
+  isTemplate  Boolean  @default(false)
+  templateName String?
+  preparationTime Int? // minutos
+  difficulty  RecipeDifficulty @default(EASY)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  diet        Diet          @relation(fields: [dietId], references: [id], onDelete: Cascade)
+  foods       DietMealFood[]
+}
+
+model DietMealFood {
+  id          String @id @default(cuid())
+  mealId      String
+  
+  // Dados do alimento TACO
+  tacoId      Int?     // ID do alimento na tabela TACO
+  foodName    String
+  category    String?
+  
+  // Quantidade e unidade
+  quantity    Float
+  unit        String   @default("g")
+  
+  // Valores nutricionais por porção
+  calories    Int?
+  protein     Float?
+  carbs       Float?
+  fat         Float?
+  fiber       Float?
+  sodium      Float?
+  sugar       Float?
+  
+  // Micronutrientes
+  calcium     Float?
+  iron        Float?
+  magnesium   Float?
+  phosphorus  Float?
+  potassium   Float?
+  zinc        Float?
+  vitaminC    Float?
+  vitaminA    Float?
+  vitaminE    Float?
+  vitaminB12  Float?
+  folate      Float?
+  
+  // Informações adicionais
+  preparation String?  // modo de preparo
+  notes       String?
+  isSubstitution Boolean @default(false)
+  originalFoodId String? // se for uma substituição
+  
+  createdAt   DateTime @default(now())
+
+  // Relations
+  meal        DietMeal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+}
+
+model Recipe {
+  id              String         @id @default(cuid())
+  title           String
+  description     String?
+  category        String
+  difficulty      RecipeDifficulty @default(EASY)
+  prepTime        Int            @default(30) // Em minutos
+  servings        Int            @default(1)
+  calories        Int            @default(0)
+  protein         Float          @default(0)
+  carbs           Float          @default(0)
+  fat             Float          @default(0)
+  fiber           Float          @default(0)
+  ingredients     String         // JSON string array
+  instructions    String         // JSON string array
+  tags            String         // JSON string array
+  rating          Float          @default(5.0)
+  image           String?
+  isPublic        Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  nutritionist    Nutritionist @relation(fields: [nutritionistId], references: [id])
+  nutritionistId  String
+}
+
+model DietShare {
+  id             String   @id @default(cuid())
+  dietId         String
+  sharedWithId   String   // ID do nutricionista que recebeu o compartilhamento
+  permission     SharePermission @default(VIEW)
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  diet           Diet         @relation(fields: [dietId], references: [id], onDelete: Cascade)
+  sharedWith     Nutritionist @relation(fields: [sharedWithId], references: [id])
+
+  @@unique([dietId, sharedWithId])
+}
+
+model MealTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  category       MealCategory @default(CUSTOM)
+  mealType       MealType
+  
+  // Valores nutricionais
+  calories       Int
+  protein        Float
+  carbs          Float
+  fat            Float
+  fiber          Float
+  
+  // Metadados
+  prepTime       Int?     // minutos
+  difficulty     RecipeDifficulty @default(EASY)
+  servings       Int      @default(1)
+  tags           String?  // JSON array
+  isPublic       Boolean  @default(false)
+  usageCount     Int      @default(0)
+  rating         Float    @default(5.0)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  nutritionist   Nutritionist @relation(fields: [nutritionistId], references: [id])
+  nutritionistId String
+  foods          MealTemplateFood[]
+}
+
+model MealTemplateFood {
+  id             String @id @default(cuid())
+  templateId     String
+  tacoId         Int
+  foodName       String
+  quantity       Float
+  unit           String @default("g")
+  
+  // Relations
+  template       MealTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+model FoodUsageHistory {
+  id             String   @id @default(cuid())
+  nutritionistId String
+  tacoId         Int
+  foodName       String
+  category       String
+  usageCount     Int      @default(1)
+  lastUsed       DateTime @default(now())
+  
+  // Relations
+  nutritionist   Nutritionist @relation(fields: [nutritionistId], references: [id])
+  
+  @@unique([nutritionistId, tacoId])
+}
+
+model DietAnalytics {
+  id             String   @id @default(cuid())
+  dietId         String
+  
+  // Métricas de aderência
+  targetCalories Float
+  averageCalories Float
+  adherenceRate  Float    // 0-100%
+  
+  // Análise de macros
+  proteinAdherence Float
+  carbAdherence   Float
+  fatAdherence    Float
+  
+  // Análise de micronutrientes
+  adequacyScore   Float    // 0-100%
+  deficientNutrients String? // JSON array
+  excessiveNutrients String? // JSON array
+  
+  // Dados temporais
+  analyzedPeriod  String   // "7days", "30days", etc.
+  generatedAt     DateTime @default(now())
+  
+  // Relations
+  diet           Diet     @relation(fields: [dietId], references: [id], onDelete: Cascade)
+}
+
+model Metric {
+  id                    String     @id @default(cuid())
+  patientId             String
+  weight                Float?
+  height                Float?
+  bodyFat               Float?
+  muscleMass            Float?
+  // Tronco
+  waistCircumference    Float?
+  hipCircumference      Float?
+  neckCircumference     Float?
+  chestCircumference    Float?
+  abdomenCircumference  Float?
+  shoulderCircumference Float?
+  pectoralCircumference Float?
+  // Membros Superiores
+  armCircumferenceRight Float?
+  armCircumferenceLeft  Float?
+  forearmCircumferenceRight Float?
+  forearmCircumferenceLeft  Float?
+  wristCircumferenceRight   Float?
+  wristCircumferenceLeft    Float?
+  // Membros Inferiores
+  thighProximalRight    Float?
+  thighDistalRight      Float?
+  thighProximalLeft     Float?
+  thighDistalLeft       Float?
+  calfCircumferenceRight  Float?
+  calfCircumferenceLeft   Float?
+  date                  DateTime
+  notes                 String?
+  createdAt             DateTime   @default(now())
+
+  // Relations
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model EnergyExpenditure {
+  id                    String     @id @default(cuid())
+  patientId             String
+  
+  // Dados básicos para cálculo
+  weight                Float
+  height                Float
+  age                   Int
+  gender                Gender
+  bodyFat               Float?
+  muscleMass            Float?
+  
+  // Equação utilizada
+  equation              TMBEquation @default(MIFFLIN_ST_JEOR)
+  
+  // Nível de atividade
+  activityLevel         ActivityLevel @default(SEDENTARY)
+  
+  // Objetivo
+  objective             NutritionalObjective @default(MAINTENANCE)
+  
+  // Condições especiais
+  isPregnant            Boolean    @default(false)
+  pregnancyTrimester    Int?       // 1, 2 ou 3
+  pregnancyWeeks        Int?       // semanas de gestação
+  isLactating           Boolean    @default(false)
+  lactationType         LactationType?
+  
+  // Condições médicas
+  hasThyroidIssues      Boolean    @default(false)
+  hasDiabetes           Boolean    @default(false)
+  hasMetabolicDisorder  Boolean    @default(false)
+  medicationsAffectingMetabolism String? // JSON array
+  
+  // Resultados calculados
+  tmb                   Float
+  get                   Float      // Gasto Energético Total
+  targetCalories        Float      // Meta calórica ajustada
+  
+  // Distribuição de macronutrientes (%)
+  carbPercentage        Int        @default(50)
+  proteinPercentage     Int        @default(25)
+  fatPercentage         Int        @default(25)
+  
+  // Macronutrientes em gramas
+  carbGrams             Float
+  proteinGrams          Float
+  fatGrams              Float
+  
+  date                  DateTime
+  notes                 String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  // Relations
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  patientId       String
+  nutritionistId  String
+  date            DateTime
+  duration        Int               @default(60) // Em minutos
+  status          AppointmentStatus @default(SCHEDULED)
+  type            AppointmentType   @default(CONSULTATION)
+  location        String?
+  notes           String?
+  patientNotes    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  patient         Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nutritionist    Nutritionist  @relation(fields: [nutritionistId], references: [id])
+}
+
+model FoodLog {
+  id        String   @id @default(cuid())
+  patientId String
+  date      DateTime
+  mealType  MealType
+  foodName  String
+  quantity  Float
+  unit      String
+  calories  Int?
+  protein   Float?
+  carbs     Float?
+  fat       Float?
+  fiber     Float?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Checklist {
+  id          String  @id @default(cuid())
+  patientId   String
+  date        DateTime
+  drinkWater  Boolean @default(false)
+  exercise    Boolean @default(false)
+  sleep8h     Boolean @default(false)
+  eatFruits   Boolean @default(false)
+  eatVeggies  Boolean @default(false)
+  noJunkFood  Boolean @default(false)
+  takeMeds    Boolean @default(false)
+  customHabit String?
+  customDone  Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  patient     Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, date])
+}
+
+model MedicalRecord {
+  id              String   @id @default(cuid())
+  patientId       String
+  nutritionistId  String
+  date            DateTime
+  weight          Float?
+  height          Float?
+  bloodPressure   String?
+  heartRate       Int?
+  observations    String
+  recommendations String?
+  nextAppointment DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  patient         Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nutritionist    Nutritionist @relation(fields: [nutritionistId], references: [id])
+}
+
+model Conversation {
+  id             String   @id @default(cuid())
+  patientId      String
+  nutritionistId String
+  lastMessage    String?
+  lastMessageAt  DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nutritionist   Nutritionist @relation(fields: [nutritionistId], references: [id])
+  messages       Message[]
+
+  @@unique([patientId, nutritionistId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  type           MessageType  @default(TEXT)
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id])
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType    @default(INFO)
+  priority  NotificationPriority @default(MEDIUM)
+  read      Boolean             @default(false)
+  readAt    DateTime?
+  actionUrl String?
+  metadata  String?             // JSON string for additional data
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  // Relations
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model TwoFactorAuth {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  secret      String   // Encrypted TOTP secret
+  backupCodes String   // JSON array of backup codes
+  isEnabled   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  id          String         @id @default(cuid())
+  userId      String?
+  email       String
+  ipAddress   String
+  userAgent   String?
+  success     Boolean
+  failureReason String?
+  attempt     LoginAttemptType @default(PASSWORD)
+  createdAt   DateTime       @default(now())
+
+  // Relations
+  user        User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  action      AuditAction
+  resource    String      // Table/entity affected
+  resourceId  String?     // ID of the affected record
+  details     String?     // JSON string with additional details
+  ipAddress   String
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([resource, createdAt])
+}
+
+// Enums
+enum UserRole {
+  PATIENT
+  NUTRITIONIST
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MealType {
+  BREAKFAST
+  MORNING_SNACK
+  LUNCH
+  AFTERNOON_SNACK
+  DINNER
+  EVENING_SNACK
+}
+
+enum MetricType {
+  WEIGHT
+  BODY_FAT
+  MUSCLE_MASS
+  BMI
+  WAIST
+  HIP
+  NECK
+  ARM
+  THIGH
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AppointmentType {
+  CONSULTATION
+  FOLLOW_UP
+  EVALUATION
+  EMERGENCY
+}
+
+enum PatientStatus {
+  ACTIVE
+  INACTIVE
+  ATTENTION
+}
+
+enum RecipeDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  APPOINTMENT
+  MESSAGE
+  METRIC
+  DIET
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum LoginAttemptType {
+  PASSWORD
+  TWO_FACTOR
+  BACKUP_CODE
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  PASSWORD_CHANGE
+  TWO_FACTOR_ENABLE
+  TWO_FACTOR_DISABLE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+}
+
+enum TMBEquation {
+  MIFFLIN_ST_JEOR
+  HARRIS_BENEDICT_ORIGINAL
+  HARRIS_BENEDICT_REVISED
+  KATCH_MCARDLE
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  INTENSE
+  EXTREME
+}
+
+enum NutritionalObjective {
+  WEIGHT_LOSS
+  MAINTENANCE
+  WEIGHT_GAIN
+  MUSCLE_GAIN
+}
+
+enum LactationType {
+  EXCLUSIVE
+  PARTIAL
+}
+
+enum DietTemplateCategory {
+  WEIGHT_LOSS
+  WEIGHT_GAIN
+  MUSCLE_GAIN
+  DIABETES
+  HYPERTENSION
+  VEGETARIAN
+  VEGAN
+  LOW_CARB
+  HIGH_PROTEIN
+  MEDITERRANEAN
+  CUSTOM
+}
+
+enum SharePermission {
+  VIEW
+  EDIT
+  FULL
+}
+
+enum MealCategory {
+  BREAKFAST
+  SNACK
+  LUNCH
+  DINNER
+  DESSERT
+  DRINK
+  SUPPLEMENT
+  CUSTOM
+}

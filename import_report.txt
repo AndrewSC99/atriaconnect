@@ -1,0 +1,45 @@
+
+=== RELATÓRIO DE IMPORTAÇÃO IBGE ===
+Data: 24/08/2025, 11:04:18
+
+RESUMO DOS DADOS:
+- Total de alimentos: 21
+- Total de grupos: 12
+- Fonte: IBGE - Tabelas de Composição Nutricional dos Alimentos Consumidos no Brasil
+
+DISTRIBUIÇÃO POR GRUPOS:
+- Açúcares e Produtos de Confeitaria: 2 alimentos
+- Cereais e Produtos de Cereais: 3 alimentos
+- Leguminosas: 2 alimentos
+- Carnes e Produtos Cárneos: 2 alimentos
+- Peixes e Frutos do Mar: 1 alimentos
+- Leite e Produtos Lácteos: 2 alimentos
+- Ovos: 1 alimentos
+- Frutas e Produtos de Frutas: 3 alimentos
+- Hortaliças: 3 alimentos
+- Óleos e Gorduras: 1 alimentos
+- Oleaginosas: 1 alimentos
+- Bebidas: 0 alimentos
+
+EXEMPLOS DE ALIMENTOS:
+- Açúcar cristal (387 kcal)
+- Açúcar mascavo (369 kcal)
+- Arroz branco cozido (128 kcal)
+- Arroz integral cozido (124 kcal)
+- Aveia em flocos crua (394 kcal)
+- Feijão preto cozido (77 kcal)
+- Feijão carioca cozido (76 kcal)
+- Carne bovina - acém moído cru (186 kcal)
+- Frango - peito sem pele cozido (159 kcal)
+- Tilápia crua (96 kcal)
+
+ARQUIVOS GERADOS:
+- alimentos_ibge.json: Dados originais em JSON
+- create_tables.sql: Script para criação das tabelas
+- import_foods_data.sql: Script para inserção dos dados
+- node_importer.js: Importador para Node.js/SQLite
+- import_log.txt: Log da execução
+
+NOTA: Esta é uma amostra representativa da tabela IBGE completa 
+que contém aproximadamente 1.971 alimentos.
+        

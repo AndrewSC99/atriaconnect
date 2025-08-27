@@ -1,0 +1,318 @@
+/* Estilos personalizados para a página de login */
+
+/* Animação de entrada suave */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Aplicar animações aos elementos */
+.login-form-container {
+  animation: slideInLeft 0.8s ease-out;
+}
+
+.image-container {
+  animation: slideInRight 0.8s ease-out 0.2s both;
+}
+
+.form-elements {
+  animation: fadeInUp 0.6s ease-out 0.4s both;
+}
+
+/* Efeito de brilho no botão de login */
+.login-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.login-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.login-button:hover::before {
+  left: 100%;
+}
+
+/* Efeito de flutuação suave para o logo */
+.logo-container {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Efeito de gradiente animado para o fundo */
+.gradient-bg {
+  background: linear-gradient(
+    45deg,
+    #f8fafc,
+    #ffffff,
+    #f1f5f9,
+    #ffffff
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 8s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Efeito de sombra dinâmica para o card */
+.form-card {
+  transition: all 0.3s ease;
+}
+
+.form-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Efeito de foco melhorado para os inputs */
+.input-field:focus {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
+}
+
+/* Animação para os pontos de destaque */
+.highlight-dot {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Efeito de transparência para o overlay da imagem */
+.image-overlay {
+  backdrop-filter: blur(1px);
+}
+
+/* Estilos específicos para a imagem do casal na duna */
+.image-container {
+  position: relative;
+}
+
+.image-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.1) 0%,
+    rgba(59, 130, 246, 0.1) 50%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  pointer-events: none;
+}
+
+/* Efeito de transição suave para o overlay do texto */
+.image-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.2) 40%,
+    transparent 70%
+  );
+  backdrop-filter: blur(0.5px);
+}
+
+/* Animação sutil para os elementos de texto sobre a imagem */
+.image-overlay h2 {
+  animation: fadeInUp 1s ease-out 0.6s both;
+}
+
+.image-overlay p {
+  animation: fadeInUp 1s ease-out 0.8s both;
+}
+
+.image-overlay .highlight-dot {
+  animation: fadeInUp 0.8s ease-out calc(1s + var(--delay, 0s)) both, 
+             pulse 2s ease-in-out infinite;
+}
+
+/* Efeito de brilho dourado nos pontos de destaque */
+.highlight-dot {
+  background: linear-gradient(45deg, #fbbf24, #f59e0b);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+/* Responsividade melhorada */
+@media (max-width: 1024px) {
+  .image-container {
+    display: none;
+  }
+  
+  .login-form-container {
+    width: 100%;
+    animation: fadeInUp 0.8s ease-out;
+  }
+}
+
+/* Responsividade para tablets */
+@media (max-width: 768px) {
+  .login-form-container {
+    padding: 1rem;
+  }
+  
+  .form-elements {
+    max-width: 100%;
+  }
+  
+  .form-card {
+    margin: 0;
+  }
+}
+
+/* Responsividade para celulares */
+@media (max-width: 480px) {
+  .login-form-container {
+    padding: 0.5rem;
+  }
+  
+  .form-elements h1 {
+    font-size: 2rem;
+  }
+  
+  .form-elements p {
+    font-size: 1rem;
+  }
+  
+  .form-card {
+    padding: 1rem;
+  }
+}
+
+/* Efeito de loading melhorado */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Efeito de hover para links */
+.hover-link {
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.hover-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+  transition: width 0.3s ease;
+}
+
+.hover-link:hover::after {
+  width: 100%;
+}
+
+/* Efeito de destaque para campos obrigatórios */
+.required-field::after {
+  content: ' *';
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Efeito de validação visual */
+.input-valid {
+  border-color: #22c55e;
+  background-color: #f0fdf4;
+}
+
+.input-invalid {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+/* Animação para mensagens de erro */
+.error-message {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+
+

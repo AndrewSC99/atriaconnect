@@ -1,0 +1,3094 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { 
+  calculateTMB, 
+  calculateTEE, 
+  calculateTargetCalories, 
+  calculateMacronutrients, 
+  getEquationInfo,
+  canUseKatchMcArdle,
+  type TMBEquation,
+  type ActivityLevel,
+  type NutritionalObjective
+} from '@/utils/energyCalculations'
+import { NutritionistLayout } from '@/components/layouts/nutritionist-layout'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { 
+  Search,
+  User,
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  Activity,
+  TrendingUp,
+  Calculator,
+  ChefHat,
+  Save,
+  Download,
+  Plus,
+  Edit,
+  Weight,
+  Ruler,
+  Heart,
+  Target,
+  Clock,
+  Utensils,
+  Apple,
+  Beef,
+  Wheat,
+  X,
+  Calendar as CalendarIcon,
+  Scissors,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Eye
+} from 'lucide-react'
+
+// Interface completa do prontuário
+interface CompleteMedicalRecord {
+  // Dados pessoais
+  fullName: string
+  birthDate: string
+  gender: string
+  cpf: string
+  rg: string
+  maritalStatus: string
+  education: string
+  profession: string
+  
+  // Contato
+  phone: string
+  email: string
+  address: string
+  
+  // Histórico clínico
+  clinicalHistory: string
+  familyHistory: string
+  nutritionalHistory: string
+  medications: string
+  allergies: string
+  
+  // Hábitos e estilo de vida
+  foodHabits: string
+  physicalActivity: string
+  lifestyle: string
+  sleepPattern: string
+  stressLevel: string
+  hydration: string
+  supplements: string
+  foodPreferences: string
+  workRoutine: string
+  
+  // Medidas antropométricas
+  weight: string
+  height: string
+  waist: string
+  hip: string
+  neck: string
+  chest: string
+  abdomen: string
+  shoulder: string
+  
+  // Membros superiores
+  armRight: string
+  armLeft: string
+  forearmRight: string
+  forearmLeft: string
+  wristRight: string
+  wristLeft: string
+  
+  // Membros inferiores
+  thighProximalRight: string
+  thighDistalRight: string
+  thighProximalLeft: string
+  thighDistalLeft: string
+  calfRight: string
+  calfLeft: string
+  
+  // Dobras cutâneas
+  triceps: string
+  biceps: string
+  subscapular: string
+  thoracic: string
+  midaxillary: string
+  supraspinal: string
+  suprailiac: string
+  abdominal: string
+  thighSkinfold: string
+  calfSkinfold: string
+  
+  // Bioimpedância
+  bodyFat: string
+  muscleMass: string
+  bodyWater: string
+  bmr: string
+  
+  // Gasto energético
+  tmbEquation: TMBEquation
+  activityLevel: string
+  isPregnant: boolean
+  pregnancyTrimester: string
+  pregnancyWeeks: string
+  isLactating: boolean
+  lactationType: string
+  hasThyroidIssues: boolean
+  hasDiabetes: boolean
+  hasMetabolicDisorder: boolean
+  medicationsAffectingMetabolism: string
+  
+  // Objetivo e macronutrientes
+  objective: string
+  goalWeight: string
+  carbPercentage: number
+  proteinPercentage: number
+  fatPercentage: number
+  
+  // Plano alimentar
+  breakfast: string
+  morningSnack: string
+  lunch: string
+  afternoonSnack: string
+  dinner: string
+  eveningSnack: string
+  observations: string
+  restrictions: string
+}
+
+// Mock data for patients
+const mockPatients = [
+  {
+    id: 1,
+    name: "João Silva",
+    email: "joao@email.com",
+    phone: "(11) 99999-1111",
+    cpf: "123.456.789-00",
+    age: 34,
+    gender: "MALE",
+    address: "Rua das Flores, 123 - Centro, São Paulo - SP",
+    profession: "Engenheiro",
+    currentWeight: 78.5,
+    height: 1.75,
+    imc: 25.6,
+    lastConsultation: "2024-11-10",
+    objective: "Emagrecimento"
+  },
+  {
+    id: 2,
+    name: "Maria Santos",
+    email: "maria@email.com",
+    phone: "(11) 88888-2222",
+    cpf: "987.654.321-00",
+    age: 28,
+    gender: "FEMALE",
+    address: "Av. Paulista, 456 - Bela Vista, São Paulo - SP",
+    profession: "Professora",
+    currentWeight: 65.2,
+    height: 1.68,
+    imc: 23.1,
+    lastConsultation: "2024-11-08",
+    objective: "Ganho de massa muscular"
+  },
+  {
+    id: 3,
+    name: "Carlos Oliveira",
+    email: "carlos@email.com",
+    phone: "(11) 77777-3333",
+    cpf: "456.789.123-00",
+    age: 45,
+    gender: "MALE",
+    address: "Rua Augusta, 789 - Consolação, São Paulo - SP",
+    profession: "Empresário",
+    currentWeight: 95.8,
+    height: 1.80,
+    imc: 29.6,
+    lastConsultation: "2024-11-05",
+    objective: "Controle de diabetes"
+  }
+]
+
+// Mock anthropometric data
+const mockAnthropometricData = [
+  { 
+    date: "2024-10-01", weight: 82.0, imc: 26.8, 
+    // Tronco
+    waist: 95, hip: 105, chest: 98, abdomen: 92, neck: 38, shoulder: 112, pectoral: 106,
+    // Membros Superiores
+    armRight: 32.5, armLeft: 32.0, forearmRight: 26.0, forearmLeft: 25.5, wristRight: 17.0, wristLeft: 16.8,
+    // Membros Inferiores
+    thighProximalRight: 58.0, thighDistalRight: 45.5, thighProximalLeft: 57.5, thighDistalLeft: 45.0, 
+    calfRight: 36.0, calfLeft: 35.5, 
+    bodyFat: 18.5, muscleMass: 35.2 
+  },
+  { 
+    date: "2024-10-15", weight: 80.5, imc: 26.3, 
+    // Tronco
+    waist: 93, hip: 104, chest: 97, abdomen: 90, neck: 37.5, shoulder: 111, pectoral: 105,
+    // Membros Superiores
+    armRight: 32.5, armLeft: 32.0, forearmRight: 26.0, forearmLeft: 25.5, wristRight: 17.0, wristLeft: 16.8,
+    // Membros Inferiores
+    thighProximalRight: 57.5, thighDistalRight: 45.0, thighProximalLeft: 57.0, thighDistalLeft: 44.5, 
+    calfRight: 35.8, calfLeft: 35.3, 
+    bodyFat: 17.8, muscleMass: 35.8 
+  },
+  { 
+    date: "2024-10-27", weight: 79.2, imc: 25.9, 
+    // Tronco
+    waist: 91, hip: 103, chest: 96, abdomen: 88, neck: 37, shoulder: 110, pectoral: 104,
+    // Membros Superiores
+    armRight: 33.0, armLeft: 32.5, forearmRight: 26.2, forearmLeft: 25.8, wristRight: 17.1, wristLeft: 16.9,
+    // Membros Inferiores
+    thighProximalRight: 57.0, thighDistalRight: 44.5, thighProximalLeft: 56.5, thighDistalLeft: 44.0, 
+    calfRight: 35.5, calfLeft: 35.0, 
+    bodyFat: 16.9, muscleMass: 36.2 
+  },
+  { 
+    date: "2024-11-10", weight: 78.5, imc: 25.6, 
+    // Tronco
+    waist: 89, hip: 102, chest: 95, abdomen: 86, neck: 36.5, shoulder: 109, pectoral: 103,
+    // Membros Superiores
+    armRight: 33.0, armLeft: 32.5, forearmRight: 26.2, forearmLeft: 25.8, wristRight: 17.1, wristLeft: 16.9,
+    // Membros Inferiores
+    thighProximalRight: 56.5, thighDistalRight: 44.0, thighProximalLeft: 56.0, thighDistalLeft: 43.5, 
+    calfRight: 35.2, calfLeft: 34.8, 
+    bodyFat: 16.2, muscleMass: 36.8 
+  }
+]
+
+// Função para gerar cor do avatar baseada no nome
+const getAvatarColor = (name: string) => {
+  const colors = [
+    'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 
+    'bg-indigo-500', 'bg-yellow-500', 'bg-red-500', 'bg-teal-500'
+  ]
+  const index = name.charCodeAt(0) % colors.length
+  return colors[index]
+}
+
+// Função para obter iniciais do nome
+const getInitials = (name: string) => {
+  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
+// Função para cor do IMC
+const getIMCColor = (imc: number) => {
+  if (imc < 18.5) return 'text-blue-600 bg-blue-50'
+  if (imc < 25) return 'text-green-600 bg-green-50'
+  if (imc < 30) return 'text-yellow-600 bg-yellow-50'
+  return 'text-red-600 bg-red-50'
+}
+
+// Função para status do IMC
+const getIMCStatus = (imc: number) => {
+  if (imc < 18.5) return 'Baixo peso'
+  if (imc < 25) return 'Normal'
+  if (imc < 30) return 'Sobrepeso'
+  return 'Obesidade'
+}
+
+// Função para verificar se campo está preenchido
+const isFieldFilled = (value: string | undefined) => {
+  return value && value.trim() !== ''
+}
+
+// Função para contagem de campos preenchidos por categoria
+const getCompletionStats = (patientId: number, category: string, records: Record<number, Partial<CompleteMedicalRecord>>) => {
+  const record = records[patientId] || {}
+  
+  let total = 0
+  let filled = 0
+  
+  switch (category) {
+    case 'personal':
+      const personalFields = ['fullName', 'birthDate', 'gender', 'cpf', 'email', 'phone', 'whatsapp', 'profession', 'maritalStatus']
+      total = personalFields.length
+      filled = personalFields.filter(field => isFieldFilled(record[field as keyof CompleteMedicalRecord] as string)).length
+      break
+    case 'clinical':
+      const clinicalFields = ['clinicalHistory', 'familyHistory', 'medications', 'allergies']
+      total = clinicalFields.length
+      filled = clinicalFields.filter(field => isFieldFilled(record[field as keyof CompleteMedicalRecord] as string)).length
+      break
+    case 'lifeHabits':
+      const lifeHabitsFields = ['physicalActivity', 'sleepQuality', 'stressLevel', 'waterIntake', 'smoking', 'alcohol']
+      total = lifeHabitsFields.length
+      filled = lifeHabitsFields.filter(field => isFieldFilled(record[field as keyof CompleteMedicalRecord] as string)).length
+      break
+    case 'foodHabits':
+      const foodHabitsFields = ['mealsPerDay', 'mealTimes', 'whereEats', 'whoCooks', 'preferredFoods', 'dislikedFoods']
+      total = foodHabitsFields.length
+      filled = foodHabitsFields.filter(field => isFieldFilled(record[field as keyof CompleteMedicalRecord] as string)).length
+      break
+    case 'objective':
+      const objectiveFields = ['objective', 'goalWeight', 'estimatedTime']
+      total = objectiveFields.length
+      filled = objectiveFields.filter(field => isFieldFilled(record[field as keyof CompleteMedicalRecord] as string)).length
+      break
+  }
+  
+  return { filled, total, percentage: total > 0 ? Math.round((filled / total) * 100) : 0 }
+}
+
+export default function ProntuariosPage() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedPatient, setSelectedPatient] = useState<typeof mockPatients[0] | null>(null)
+  const [filteredPatients, setFilteredPatients] = useState(mockPatients)
+  const [isCreatingNew, setIsCreatingNew] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [filterObjective, setFilterObjective] = useState('')
+  const [expandedMeasurements, setExpandedMeasurements] = useState<number[]>([])
+  
+  // Estado para prontuários completos dos pacientes
+  const [patientRecords, setPatientRecords] = useState<Record<number, Partial<CompleteMedicalRecord>>>({})
+  
+  // Estado para novo prontuário
+  const [newPatientData, setNewPatientData] = useState({
+    // Dados pessoais
+    fullName: '',
+    birthDate: '',
+    gender: '',
+    cpf: '',
+    email: '',
+    phone: '',
+    whatsapp: '',
+    address: '',
+    maritalStatus: '',
+    profession: '',
+    
+    // Anamnese clínica
+    clinicalHistory: '',
+    familyHistory: '',
+    medications: '',
+    allergies: '',
+    surgeries: '',
+    
+    // Hábitos de vida
+    physicalActivity: '',
+    sleepQuality: '',
+    stressLevel: 'baixo',
+    smoking: 'nao',
+    alcohol: 'nao',
+    waterIntake: '',
+    
+    // Hábitos alimentares
+    mealsPerDay: '',
+    mealTimes: '',
+    whereEats: '',
+    whoCooks: '',
+    preferredFoods: '',
+    dislikedFoods: '',
+    restrictions: '',
+    
+    // Medidas - Circunferências
+    // Tronco
+    waist: '',
+    hip: '',
+    neck: '',
+    chest: '',
+    abdomen: '',
+    shoulder: '',
+    pectoral: '',
+    // Membros Superiores
+    armRight: '',
+    armLeft: '',
+    forearmRight: '',
+    forearmLeft: '',
+    wristRight: '',
+    wristLeft: '',
+    // Membros Inferiores
+    thighProximalRight: '',
+    thighDistalRight: '',
+    thighProximalLeft: '',
+    thighDistalLeft: '',
+    calfRight: '',
+    calfLeft: '',
+    
+    // Medidas - Dobras cutâneas
+    triceps: '',
+    biceps: '',
+    subscapular: '',
+    thoracic: '',
+    midaxillary: '',
+    supraspinal: '',
+    suprailiac: '',
+    abdominal: '',
+    thighSkinfold: '',
+    calfSkinfold: '',
+    
+    // Bioimpedância
+    weight: '',
+    height: '',
+    bodyFat: '',
+    muscleMass: '',
+    bodyWater: '',
+    bmr: '',
+    
+    // Objetivo
+    objective: '',
+    goalWeight: '',
+    activityLevel: 'sedentario'
+  })
+
+  const [anamnesisData, setAnamnesisData] = useState({
+    clinicalHistory: '',
+    familyHistory: '',
+    medications: '',
+    allergies: '',
+    foodHabits: '',
+    physicalActivity: '',
+    lifestyle: '',
+    sleepPattern: '',
+    stressLevel: 'baixo',
+    hydration: '',
+    supplements: '',
+    
+    // Gasto Energético - Equação e condições especiais
+    tmbEquation: 'MIFFLIN_ST_JEOR' as 'MIFFLIN_ST_JEOR' | 'HARRIS_BENEDICT_ORIGINAL' | 'HARRIS_BENEDICT_REVISED' | 'KATCH_MCARDLE',
+    isPregnant: false,
+    pregnancyTrimester: '' as '' | '1' | '2' | '3',
+    pregnancyWeeks: '',
+    isLactating: false,
+    lactationType: '' as '' | 'EXCLUSIVE' | 'PARTIAL',
+    hasThyroidIssues: false,
+    hasDiabetes: false,
+    hasMetabolicDisorder: false,
+    medicationsAffectingMetabolism: '',
+    
+    // Distribuição de macronutrientes
+    carbPercentage: 50,
+    proteinPercentage: 25,
+    fatPercentage: 25
+  })
+
+  const [energyData, setEnergyData] = useState({
+    tmb: 0,
+    activityLevel: 'sedentario',
+    totalExpenditure: 0,
+    recommendedCalories: 0,
+    carbPercentage: 50,
+    proteinPercentage: 20,
+    fatPercentage: 30
+  })
+
+  const [dietPlan, setDietPlan] = useState({
+    breakfast: '',
+    morningSnack: '',
+    lunch: '',
+    afternoonSnack: '',
+    dinner: '',
+    eveningSnack: '',
+    observations: '',
+    restrictions: ''
+  })
+
+  useEffect(() => {
+    let filtered = mockPatients.filter(patient =>
+      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.cpf.includes(searchTerm) ||
+      patient.phone.includes(searchTerm)
+    )
+    
+    if (filterObjective) {
+      filtered = filtered.filter(patient => 
+        patient.objective.toLowerCase().includes(filterObjective.toLowerCase())
+      )
+    }
+    
+    setFilteredPatients(filtered)
+  }, [searchTerm, filterObjective])
+
+  useEffect(() => {
+    if (selectedPatient) {
+      // Calculate energy expenditure when patient is selected
+      const tmb = selectedPatient.gender === 'MALE' 
+        ? 88.362 + (13.397 * selectedPatient.currentWeight) + (4.799 * (selectedPatient.height * 100)) - (5.677 * selectedPatient.age)
+        : 447.593 + (9.247 * selectedPatient.currentWeight) + (3.098 * (selectedPatient.height * 100)) - (4.330 * selectedPatient.age)
+      
+      const activityMultipliers = {
+        sedentario: 1.2,
+        leve: 1.375,
+        moderado: 1.55,
+        intenso: 1.725,
+        extremo: 1.9
+      }
+      
+      const totalExpenditure = tmb * activityMultipliers[energyData.activityLevel as keyof typeof activityMultipliers]
+      
+      setEnergyData(prev => ({
+        ...prev,
+        tmb: Math.round(tmb),
+        totalExpenditure: Math.round(totalExpenditure),
+        recommendedCalories: Math.round(totalExpenditure * 0.9) // 10% deficit for weight loss
+      }))
+    }
+  }, [selectedPatient, energyData.activityLevel])
+
+  const handlePatientSelect = (patient: typeof mockPatients[0]) => {
+    setSelectedPatient(patient)
+    setIsDialogOpen(true)
+  }
+
+  const handleSaveAnamnesis = () => {
+    alert('Anamnese salva com sucesso!')
+  }
+
+  const handleSaveNewPatient = () => {
+    // Criar um novo paciente no mockPatients e adicionar os dados ao patientRecords
+    const newPatientId = Math.max(...mockPatients.map(p => p.id)) + 1
+    
+    const newPatient = {
+      id: newPatientId,
+      name: newPatientData.fullName,
+      email: newPatientData.email,
+      phone: newPatientData.phone,
+      cpf: newPatientData.cpf,
+      age: new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear(),
+      gender: newPatientData.gender,
+      address: newPatientData.address,
+      profession: newPatientData.profession,
+      currentWeight: parseFloat(newPatientData.weight) || 0,
+      height: parseFloat(newPatientData.height) || 0,
+      imc: parseFloat(newPatientData.weight) && parseFloat(newPatientData.height) 
+        ? (parseFloat(newPatientData.weight) / Math.pow(parseFloat(newPatientData.height), 2)).toFixed(1)
+        : 0,
+      lastConsultation: new Date().toISOString().split('T')[0],
+      objective: newPatientData.objective
+    }
+
+    // Adicionar à lista de pacientes
+    mockPatients.push(newPatient)
+    setFilteredPatients([...mockPatients])
+
+    // Salvar os dados completos no patientRecords
+    setPatientRecords(prev => ({
+      ...prev,
+      [newPatientId]: newPatientData
+    }))
+
+    // Selecionar o novo paciente e abrir seu prontuário
+    setSelectedPatient(newPatient)
+    setIsCreatingNew(false)
+    setIsDialogOpen(true)
+
+    alert('Prontuário criado com sucesso!')
+  }
+
+  const handleSaveMeasurements = () => {
+    alert('Medidas salvas com sucesso!')
+  }
+
+  const handleSaveEnergyData = () => {
+    alert('Dados de gasto energético salvos!')
+  }
+
+  const handleSaveDiet = () => {
+    alert('Plano alimentar salvo com sucesso!')
+  }
+
+  const exportToPDF = () => {
+    alert('Exportando prontuário em PDF...')
+  }
+
+  const toggleMeasurementExpansion = (index: number) => {
+    setExpandedMeasurements(prev => 
+      prev.includes(index) 
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    )
+  }
+
+  return (
+    <NutritionistLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Prontuários</h1>
+            <p className="text-muted-foreground">Gerencie os prontuários completos dos seus pacientes</p>
+          </div>
+          <div className="flex space-x-2">
+            <Button onClick={() => setIsCreatingNew(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Prontuário
+            </Button>
+            {selectedPatient && (
+              <Button onClick={exportToPDF} className="bg-green-600 hover:bg-green-700">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar PDF
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Patient Search */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Search className="h-5 w-5" />
+                  <span>Buscar Paciente</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Nome, CPF ou telefone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {/* Filtro por objetivo */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Filtrar por objetivo</label>
+                  <select 
+                    className="w-full p-2 border border-border rounded-md text-sm"
+                    value={filterObjective}
+                    onChange={(e) => setFilterObjective(e.target.value)}
+                  >
+                    <option value="">Todos os objetivos</option>
+                    <option value="Emagrecimento">Emagrecimento</option>
+                    <option value="Ganho de massa muscular">Ganho de massa</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Definição">Definição</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredPatients.map((patient) => (
+                    <div
+                      key={patient.id}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
+                        selectedPatient?.id === patient.id
+                          ? 'border-blue-500 bg-blue-50 shadow-sm'
+                          : 'border-border hover:border-border hover:bg-muted/50'
+                      }`}
+                      onClick={() => handlePatientSelect(patient)}
+                    >
+                      <div className="space-y-3">
+                        {/* Header com avatar e nome */}
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 ${getAvatarColor(patient.name)} rounded-full flex items-center justify-center text-white font-medium text-sm`}>
+                            {getInitials(patient.name)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate text-foreground">{patient.name}</p>
+                            <p className="text-xs text-slate-500">{patient.profession}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Informações extras */}
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Idade:</span>
+                            <span className="font-medium">{patient.age} anos</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">IMC:</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getIMCColor(patient.imc)}`}>
+                              {patient.imc} - {getIMCStatus(patient.imc)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Objetivo:</span>
+                            <Badge variant="outline" className="text-xs">
+                              {patient.objective}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Última consulta:</span>
+                            <span className="font-medium">{new Date(patient.lastConsultation).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Message when no patient selected */}
+          <div className="lg:col-span-3">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <User className="h-12 w-12 text-slate-400 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Selecione um paciente</h3>
+                <p className="text-muted-foreground text-center">
+                  Escolha um paciente da lista ao lado para visualizar e editar seu prontuário completo.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Dialog for Patient Details */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden p-0 bg-white rounded-lg shadow-2xl ring-1 ring-gray-200" style={{boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'}}>
+            {selectedPatient && (
+              <div className="flex flex-col h-full">
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground flex items-center space-x-2">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <span>Prontuário</span>
+                    </h2>
+                  </div>
+                </div>
+                
+                {/* Content with scroll */}
+                <div className="overflow-y-auto flex-1 max-h-[calc(90vh-140px)]">
+                  <div className="p-6">
+                    <div className="space-y-6">
+                {/* Patient Info Card */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-16 h-16 ${getAvatarColor(selectedPatient.name)} rounded-full flex items-center justify-center text-white font-bold text-2xl`}>
+                          {getInitials(selectedPatient.name)}
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold">{selectedPatient.name}</h2>
+                          <p className="text-muted-foreground">{selectedPatient.profession} • {selectedPatient.age} anos</p>
+                          <div className="flex items-center space-x-4 mt-1">
+                            <Badge variant="outline">{selectedPatient.objective}</Badge>
+                            <span className="text-sm text-slate-500">IMC: {selectedPatient.imc}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right text-sm text-muted-foreground">
+                        <p><Mail className="inline h-4 w-4 mr-1" />{selectedPatient.email}</p>
+                        <p><Phone className="inline h-4 w-4 mr-1" />{selectedPatient.phone}</p>
+                        <p><MapPin className="inline h-4 w-4 mr-1" />São Paulo - SP</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+
+                {/* Tabs */}
+                <Tabs defaultValue="anamnesis" className="space-y-6">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="anamnesis">Anamnese</TabsTrigger>
+                    <TabsTrigger value="measurements">Medidas</TabsTrigger>
+                    <TabsTrigger value="energy">Gasto Energético</TabsTrigger>
+                    <TabsTrigger value="diet">Criação de Dieta</TabsTrigger>
+                  </TabsList>
+
+                  {/* Anamnesis Tab */}
+                  <TabsContent value="anamnesis" className="space-y-6">
+                    {/* Dados Pessoais */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <User className="h-5 w-5" />
+                            <span>Dados Pessoais</span>
+                          </div>
+                          {(() => {
+                            const stats = getCompletionStats(selectedPatient?.id || 0, 'personal', patientRecords)
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground">{stats.filled}/{stats.total}</span>
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  stats.percentage === 100 ? 'bg-green-100 text-green-700' :
+                                  stats.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {stats.percentage}%
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Nome Completo</label>
+                          <Input
+                            value={patientRecords[selectedPatient?.id || 0]?.fullName || selectedPatient?.name || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], fullName: e.target.value }
+                            }))}
+                            placeholder="Nome completo do paciente"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Data de Nascimento</label>
+                          <Input
+                            type="date"
+                            value={patientRecords[selectedPatient?.id || 0]?.birthDate || selectedPatient?.birthDate || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], birthDate: e.target.value }
+                            }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Sexo</label>
+                          <select 
+                            className="w-full p-2 border border-border rounded-md"
+                            value={patientRecords[selectedPatient?.id || 0]?.gender || selectedPatient?.gender || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], gender: e.target.value }
+                            }))}
+                          >
+                            <option value="">Selecione</option>
+                            <option value="MALE">Masculino</option>
+                            <option value="FEMALE">Feminino</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">CPF</label>
+                          <Input
+                            value={patientRecords[selectedPatient?.id || 0]?.cpf || selectedPatient?.cpf || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], cpf: e.target.value }
+                            }))}
+                            placeholder="000.000.000-00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Email</label>
+                          <Input
+                            type="email"
+                            value={patientRecords[selectedPatient?.id || 0]?.email || selectedPatient?.email || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], email: e.target.value }
+                            }))}
+                            placeholder="email@exemplo.com"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Telefone</label>
+                          <Input
+                            value={patientRecords[selectedPatient?.id || 0]?.phone || selectedPatient?.phone || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], phone: e.target.value }
+                            }))}
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">WhatsApp</label>
+                          <Input
+                            value={patientRecords[selectedPatient?.id || 0]?.whatsapp || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], whatsapp: e.target.value }
+                            }))}
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Profissão</label>
+                          <Input
+                            value={patientRecords[selectedPatient?.id || 0]?.profession || selectedPatient?.profession || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], profession: e.target.value }
+                            }))}
+                            placeholder="Profissão do paciente"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Estado Civil</label>
+                          <select 
+                            className="w-full p-2 border border-border rounded-md"
+                            value={patientRecords[selectedPatient?.id || 0]?.maritalStatus || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], maritalStatus: e.target.value }
+                            }))}
+                          >
+                            <option value="">Selecione</option>
+                            <option value="solteiro">Solteiro(a)</option>
+                            <option value="casado">Casado(a)</option>
+                            <option value="divorciado">Divorciado(a)</option>
+                            <option value="viuvo">Viúvo(a)</option>
+                          </select>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Histórico Clínico */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Heart className="h-5 w-5" />
+                            <span>Histórico Clínico</span>
+                          </div>
+                          {(() => {
+                            const stats = getCompletionStats(selectedPatient?.id || 0, 'clinical', patientRecords)
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground">{stats.filled}/{stats.total}</span>
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  stats.percentage === 100 ? 'bg-green-100 text-green-700' :
+                                  stats.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {stats.percentage}%
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Histórico de Doenças</label>
+                          <Textarea
+                            placeholder="Doenças atuais e pregressas..."
+                            value={patientRecords[selectedPatient?.id || 0]?.clinicalHistory || anamnesisData.clinicalHistory}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, clinicalHistory: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], clinicalHistory: e.target.value }
+                              }))
+                            }}
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Histórico Familiar</label>
+                          <Textarea
+                            placeholder="Histórico de doenças na família..."
+                            value={patientRecords[selectedPatient?.id || 0]?.familyHistory || anamnesisData.familyHistory}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, familyHistory: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], familyHistory: e.target.value }
+                              }))
+                            }}
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Medicamentos em Uso</label>
+                          <Textarea
+                            placeholder="Medicamentos, dosagens e horários..."
+                            value={patientRecords[selectedPatient?.id || 0]?.medications || anamnesisData.medications}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, medications: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], medications: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Alergias/Intolerâncias</label>
+                          <Textarea
+                            placeholder="Alergias alimentares e medicamentosas..."
+                            value={patientRecords[selectedPatient?.id || 0]?.allergies || anamnesisData.allergies}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, allergies: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], allergies: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Hábitos de Vida */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Activity className="h-5 w-5" />
+                            <span>Hábitos de Vida</span>
+                          </div>
+                          {(() => {
+                            const stats = getCompletionStats(selectedPatient?.id || 0, 'lifeHabits', patientRecords)
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground">{stats.filled}/{stats.total}</span>
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  stats.percentage === 100 ? 'bg-green-100 text-green-700' :
+                                  stats.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {stats.percentage}%
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Atividade Física</label>
+                          <Textarea
+                            placeholder="Tipo, frequência e intensidade..."
+                            value={patientRecords[selectedPatient?.id || 0]?.physicalActivity || anamnesisData.physicalActivity}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, physicalActivity: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], physicalActivity: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Qualidade do Sono</label>
+                          <Input
+                            placeholder="Ex: 7-8 horas por noite"
+                            value={patientRecords[selectedPatient?.id || 0]?.sleepQuality || anamnesisData.sleepQuality}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, sleepQuality: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], sleepQuality: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Nível de Estresse</label>
+                          <select 
+                            className="w-full p-2 border border-border rounded-md"
+                            value={patientRecords[selectedPatient?.id || 0]?.stressLevel || anamnesisData.stressLevel}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, stressLevel: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], stressLevel: e.target.value }
+                              }))
+                            }}
+                          >
+                            <option value="baixo">Baixo</option>
+                            <option value="moderado">Moderado</option>
+                            <option value="alto">Alto</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Consumo de Água (L/dia)</label>
+                          <Input
+                            placeholder="Ex: 2.5"
+                            value={patientRecords[selectedPatient?.id || 0]?.waterIntake || anamnesisData.waterIntake}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, waterIntake: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], waterIntake: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Tabagismo</label>
+                          <select 
+                            className="w-full p-2 border border-border rounded-md"
+                            value={patientRecords[selectedPatient?.id || 0]?.smoking || anamnesisData.smoking}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, smoking: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], smoking: e.target.value }
+                              }))
+                            }}
+                          >
+                            <option value="nao">Não</option>
+                            <option value="atual">Fumante atual</option>
+                            <option value="ex">Ex-fumante</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Consumo de Álcool</label>
+                          <select 
+                            className="w-full p-2 border border-border rounded-md"
+                            value={patientRecords[selectedPatient?.id || 0]?.alcohol || anamnesisData.alcohol}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, alcohol: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], alcohol: e.target.value }
+                              }))
+                            }}
+                          >
+                            <option value="nao">Não consome</option>
+                            <option value="social">Social (fins de semana)</option>
+                            <option value="regular">Regular (durante a semana)</option>
+                          </select>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Hábitos Alimentares */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Utensils className="h-5 w-5" />
+                            <span>Hábitos Alimentares</span>
+                          </div>
+                          {(() => {
+                            const stats = getCompletionStats(selectedPatient?.id || 0, 'foodHabits', patientRecords)
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground">{stats.filled}/{stats.total}</span>
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  stats.percentage === 100 ? 'bg-green-100 text-green-700' :
+                                  stats.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {stats.percentage}%
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Número de Refeições/dia</label>
+                          <Input
+                            placeholder="Ex: 5-6 refeições"
+                            value={patientRecords[selectedPatient?.id || 0]?.mealsPerDay || anamnesisData.mealsPerDay}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, mealsPerDay: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], mealsPerDay: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Horários das Refeições</label>
+                          <Input
+                            placeholder="Ex: 7h, 10h, 13h, 16h, 19h"
+                            value={patientRecords[selectedPatient?.id || 0]?.mealTimes || anamnesisData.mealTimes}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, mealTimes: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], mealTimes: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Onde Faz as Refeições</label>
+                          <Input
+                            placeholder="Ex: Casa, trabalho, restaurante"
+                            value={patientRecords[selectedPatient?.id || 0]?.whereEats || anamnesisData.whereEats}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, whereEats: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], whereEats: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Quem Prepara as Refeições</label>
+                          <Input
+                            placeholder="Ex: Próprio paciente, cônjuge"
+                            value={patientRecords[selectedPatient?.id || 0]?.whoCooks || anamnesisData.whoCooks}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, whoCooks: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], whoCooks: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Alimentos Preferidos</label>
+                          <Textarea
+                            placeholder="Liste os alimentos favoritos..."
+                            value={patientRecords[selectedPatient?.id || 0]?.preferredFoods || anamnesisData.preferredFoods}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, preferredFoods: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], preferredFoods: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Alimentos que Evita</label>
+                          <Textarea
+                            placeholder="Liste alimentos que não gosta..."
+                            value={patientRecords[selectedPatient?.id || 0]?.dislikedFoods || anamnesisData.dislikedFoods}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, dislikedFoods: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], dislikedFoods: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Objetivo do Tratamento */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Target className="h-5 w-5" />
+                            <span>Objetivo do Tratamento</span>
+                          </div>
+                          {(() => {
+                            const stats = getCompletionStats(selectedPatient?.id || 0, 'objective', patientRecords)
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground">{stats.filled}/{stats.total}</span>
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  stats.percentage === 100 ? 'bg-green-100 text-green-700' :
+                                  stats.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {stats.percentage}%
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Objetivo Principal</label>
+                          <select 
+                            className="w-full p-2 border border-border rounded-md"
+                            value={patientRecords[selectedPatient?.id || 0]?.objective || selectedPatient?.objective || ''}
+                            onChange={(e) => setPatientRecords(prev => ({
+                              ...prev,
+                              [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], objective: e.target.value }
+                            }))}
+                          >
+                            <option value="">Selecione</option>
+                            <option value="Emagrecimento">Emagrecimento</option>
+                            <option value="Ganho de massa muscular">Ganho de massa muscular</option>
+                            <option value="Manutenção">Manutenção do peso</option>
+                            <option value="Melhora da saúde">Melhora da saúde</option>
+                            <option value="Controle de diabetes">Controle de diabetes</option>
+                            <option value="Controle do colesterol">Controle do colesterol</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Peso Meta (kg)</label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="Ex: 70.0"
+                            value={patientRecords[selectedPatient?.id || 0]?.goalWeight || anamnesisData.goalWeight}
+                            onChange={(e) => {
+                              setAnamnesisData(prev => ({...prev, goalWeight: e.target.value}))
+                              setPatientRecords(prev => ({
+                                ...prev,
+                                [selectedPatient?.id || 0]: { ...prev[selectedPatient?.id || 0], goalWeight: e.target.value }
+                              }))
+                            }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveAnamnesis} className="bg-green-600 hover:bg-green-700">
+                        <Save className="h-4 w-4 mr-2" />
+                        Salvar Anamnese
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  {/* Measurements Tab */}
+                  <TabsContent value="measurements">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Ruler className="h-5 w-5" />
+                          <span>Medidas Antropométricas</span>
+                        </CardTitle>
+                        <CardDescription>
+                          Histórico e evolução das medidas corporais
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Current Measurements */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <Weight className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">Peso Atual</p>
+                              <p className="text-xl font-bold">{selectedPatient.currentWeight}kg</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <Ruler className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">Altura</p>
+                              <p className="text-xl font-bold">{selectedPatient.height}m</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <Target className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">IMC</p>
+                              <p className="text-xl font-bold">{selectedPatient.imc}</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <TrendingUp className="h-6 w-6 text-orange-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">% Gordura</p>
+                              <p className="text-xl font-bold">16.2%</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Evolution History */}
+                        <div>
+                          <h3 className="text-lg font-semibold mb-4">Evolução das Medidas</h3>
+                          <div className="space-y-3">
+                            {mockAnthropometricData.map((data, index) => {
+                              const isExpanded = expandedMeasurements.includes(index)
+                              return (
+                                <div key={index} className="p-4 border border-border rounded-lg">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-3">
+                                      <p className="font-medium">{new Date(data.date).toLocaleDateString('pt-BR')}</p>
+                                      <Badge variant="outline">Consulta {index + 1}</Badge>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => toggleMeasurementExpansion(index)}
+                                      className="text-slate-500 hover:text-foreground"
+                                    >
+                                      {isExpanded ? (
+                                        <>
+                                          <ChevronUp className="h-4 w-4 mr-1" />
+                                          Ocultar
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Eye className="h-4 w-4 mr-1" />
+                                          Ver Detalhes
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+
+                                  {/* Dados Básicos - Sempre Visíveis */}
+                                  <div className="mb-4">
+                                    <h4 className="text-sm font-semibold text-foreground mb-2">Dados Principais</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Peso</p>
+                                        <p className="font-medium">{data.weight}kg</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">IMC</p>
+                                        <p className="font-medium">{data.imc}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">% Gordura</p>
+                                        <p className="font-medium">{data.bodyFat}%</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Massa Magra</p>
+                                        <p className="font-medium">{data.muscleMass}kg</p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Dados Detalhados - Condicionalmente Visíveis */}
+                                  {isExpanded && (
+                                    <div className="space-y-4 pt-3 border-t border-slate-100">
+                                      {/* Tronco */}
+                                      <div>
+                                        <h4 className="text-sm font-semibold text-foreground mb-2">Tronco</h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                          <div>
+                                            <p className="text-muted-foreground">Cintura</p>
+                                            <p className="font-medium">{data.waist}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Quadril</p>
+                                            <p className="font-medium">{data.hip}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Tórax</p>
+                                            <p className="font-medium">{data.chest}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Abdômen</p>
+                                            <p className="font-medium">{data.abdomen}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Pescoço</p>
+                                            <p className="font-medium">{data.neck}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Ombro</p>
+                                            <p className="font-medium">{data.shoulder}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Peitoral</p>
+                                            <p className="font-medium">{data.pectoral}cm</p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Membros Superiores */}
+                                      <div>
+                                        <h4 className="text-sm font-semibold text-foreground mb-2">Membros Superiores</h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                          <div>
+                                            <p className="text-muted-foreground">Braço D</p>
+                                            <p className="font-medium">{data.armRight}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Braço E</p>
+                                            <p className="font-medium">{data.armLeft}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Antebraço D</p>
+                                            <p className="font-medium">{data.forearmRight}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Antebraço E</p>
+                                            <p className="font-medium">{data.forearmLeft}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Punho D</p>
+                                            <p className="font-medium">{data.wristRight}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Punho E</p>
+                                            <p className="font-medium">{data.wristLeft}cm</p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Membros Inferiores */}
+                                      <div>
+                                        <h4 className="text-sm font-semibold text-foreground mb-2">Membros Inferiores</h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                          <div>
+                                            <p className="text-muted-foreground">Coxa Prox. D</p>
+                                            <p className="font-medium">{data.thighProximalRight}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Coxa Prox. E</p>
+                                            <p className="font-medium">{data.thighProximalLeft}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Coxa Dist. D</p>
+                                            <p className="font-medium">{data.thighDistalRight}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Coxa Dist. E</p>
+                                            <p className="font-medium">{data.thighDistalLeft}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Panturrilha D</p>
+                                            <p className="font-medium">{data.calfRight}cm</p>
+                                          </div>
+                                          <div>
+                                            <p className="text-muted-foreground">Panturrilha E</p>
+                                            <p className="font-medium">{data.calfLeft}cm</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Add New Measurement */}
+                        <div className="border-t pt-4">
+                          <Button className="w-full" variant="outline">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Adicionar Nova Medição
+                          </Button>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button onClick={handleSaveMeasurements} className="bg-green-600 hover:bg-green-700">
+                            <Save className="h-4 w-4 mr-2" />
+                            Salvar Medidas
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Energy Expenditure Tab */}
+                  <TabsContent value="energy">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Calculator className="h-5 w-5" />
+                          <span>Gasto Energético</span>
+                        </CardTitle>
+                        <CardDescription>
+                          Cálculo de necessidades calóricas e distribuição de macronutrientes
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Energy Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <Activity className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">TMB</p>
+                              <p className="text-xl font-bold">{energyData.tmb} kcal</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">GET Total</p>
+                              <p className="text-xl font-bold">{energyData.totalExpenditure} kcal</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <Target className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">Meta Calórica</p>
+                              <p className="text-xl font-bold">{energyData.recommendedCalories} kcal</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4 text-center">
+                              <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground">Atividade</p>
+                              <p className="text-sm font-bold capitalize">{energyData.activityLevel}</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Activity Level */}
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium">Nível de Atividade Física</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md mt-1"
+                              value={energyData.activityLevel}
+                              onChange={(e) => setEnergyData(prev => ({...prev, activityLevel: e.target.value}))}
+                            >
+                              <option value="sedentario">Sedentário (pouco ou nenhum exercício)</option>
+                              <option value="leve">Leve (exercício leve 1-3 dias/semana)</option>
+                              <option value="moderado">Moderado (exercício moderado 3-5 dias/semana)</option>
+                              <option value="intenso">Intenso (exercício intenso 6-7 dias/semana)</option>
+                              <option value="extremo">Extremo (exercício muito intenso, trabalho físico)</option>
+                            </select>
+                          </div>
+
+                          {/* Macronutrient Distribution */}
+                          <div>
+                            <h3 className="text-lg font-semibold mb-4">Distribuição de Macronutrientes</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium flex items-center space-x-2">
+                                  <Wheat className="h-4 w-4 text-yellow-600" />
+                                  <span>Carboidratos (%)</span>
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={energyData.carbPercentage}
+                                  onChange={(e) => setEnergyData(prev => ({...prev, carbPercentage: parseInt(e.target.value)}))}
+                                />
+                                <p className="text-xs text-slate-500">
+                                  {Math.round(energyData.recommendedCalories * energyData.carbPercentage / 100 / 4)}g
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium flex items-center space-x-2">
+                                  <Beef className="h-4 w-4 text-red-600" />
+                                  <span>Proteínas (%)</span>
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={energyData.proteinPercentage}
+                                  onChange={(e) => setEnergyData(prev => ({...prev, proteinPercentage: parseInt(e.target.value)}))}
+                                />
+                                <p className="text-xs text-slate-500">
+                                  {Math.round(energyData.recommendedCalories * energyData.proteinPercentage / 100 / 4)}g
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium flex items-center space-x-2">
+                                  <Apple className="h-4 w-4 text-green-600" />
+                                  <span>Gorduras (%)</span>
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={energyData.fatPercentage}
+                                  onChange={(e) => setEnergyData(prev => ({...prev, fatPercentage: parseInt(e.target.value)}))}
+                                />
+                                <p className="text-xs text-slate-500">
+                                  {Math.round(energyData.recommendedCalories * energyData.fatPercentage / 100 / 9)}g
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button onClick={handleSaveEnergyData} className="bg-green-600 hover:bg-green-700">
+                            <Save className="h-4 w-4 mr-2" />
+                            Salvar Dados
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Diet Creation Tab */}
+                  <TabsContent value="diet">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <ChefHat className="h-5 w-5" />
+                          <span>Criação de Dieta</span>
+                        </CardTitle>
+                        <CardDescription>
+                          Monte o plano alimentar personalizado do paciente
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Quick Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Meta Calórica</p>
+                            <p className="text-lg font-bold">{energyData.recommendedCalories} kcal</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Carboidratos</p>
+                            <p className="text-lg font-bold">{Math.round(energyData.recommendedCalories * energyData.carbPercentage / 100 / 4)}g</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Proteínas</p>
+                            <p className="text-lg font-bold">{Math.round(energyData.recommendedCalories * energyData.proteinPercentage / 100 / 4)}g</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Gorduras</p>
+                            <p className="text-lg font-bold">{Math.round(energyData.recommendedCalories * energyData.fatPercentage / 100 / 9)}g</p>
+                          </div>
+                        </div>
+
+                        {/* Meal Planning */}
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center space-x-2">
+                                <Clock className="h-4 w-4" />
+                                <span>Café da Manhã</span>
+                              </label>
+                              <Textarea
+                                placeholder="Ex: 1 fatia de pão integral + 1 ovo cozido + 1 copo de leite desnatado..."
+                                value={dietPlan.breakfast}
+                                onChange={(e) => setDietPlan(prev => ({...prev, breakfast: e.target.value}))}
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center space-x-2">
+                                <Apple className="h-4 w-4" />
+                                <span>Lanche da Manhã</span>
+                              </label>
+                              <Textarea
+                                placeholder="Ex: 1 banana + 1 col. sopa de aveia..."
+                                value={dietPlan.morningSnack}
+                                onChange={(e) => setDietPlan(prev => ({...prev, morningSnack: e.target.value}))}
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center space-x-2">
+                                <Utensils className="h-4 w-4" />
+                                <span>Almoço</span>
+                              </label>
+                              <Textarea
+                                placeholder="Ex: 4 col. sopa de arroz integral + 1 filé de frango grelhado + salada de folhas verdes..."
+                                value={dietPlan.lunch}
+                                onChange={(e) => setDietPlan(prev => ({...prev, lunch: e.target.value}))}
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center space-x-2">
+                                <Apple className="h-4 w-4" />
+                                <span>Lanche da Tarde</span>
+                              </label>
+                              <Textarea
+                                placeholder="Ex: 1 iogurte natural + 1 col. sopa de granola..."
+                                value={dietPlan.afternoonSnack}
+                                onChange={(e) => setDietPlan(prev => ({...prev, afternoonSnack: e.target.value}))}
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center space-x-2">
+                                <Utensils className="h-4 w-4" />
+                                <span>Jantar</span>
+                              </label>
+                              <Textarea
+                                placeholder="Ex: Sopa de legumes + 1 fatia de pão integral + 1 fatia de queijo branco..."
+                                value={dietPlan.dinner}
+                                onChange={(e) => setDietPlan(prev => ({...prev, dinner: e.target.value}))}
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center space-x-2">
+                                <Clock className="h-4 w-4" />
+                                <span>Ceia (Opcional)</span>
+                              </label>
+                              <Textarea
+                                placeholder="Ex: 1 xícara de chá de camomila + 2 castanhas..."
+                                value={dietPlan.eveningSnack}
+                                onChange={(e) => setDietPlan(prev => ({...prev, eveningSnack: e.target.value}))}
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Observações Gerais</label>
+                              <Textarea
+                                placeholder="Instruções especiais, dicas de preparo, horários..."
+                                value={dietPlan.observations}
+                                onChange={(e) => setDietPlan(prev => ({...prev, observations: e.target.value}))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Restrições e Substituições</label>
+                              <Textarea
+                                placeholder="Alimentos a evitar, opções de substituição..."
+                                value={dietPlan.restrictions}
+                                onChange={(e) => setDietPlan(prev => ({...prev, restrictions: e.target.value}))}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline">
+                            <FileText className="h-4 w-4 mr-2" />
+                            Usar Template
+                          </Button>
+                          <Button onClick={handleSaveDiet} className="bg-green-600 hover:bg-green-700">
+                            <Save className="h-4 w-4 mr-2" />
+                            Salvar Dieta
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {isCreatingNew && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setIsCreatingNew(false)}
+            />
+            
+            {/* Modal Content */}
+            <div className="relative bg-white rounded-lg shadow-2xl ring-1 ring-gray-200 w-full max-w-6xl max-h-[90vh] overflow-hidden" style={{boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'}}>
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-2xl font-bold text-foreground">Criar Novo Prontuário</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsCreatingNew(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+                <Tabs defaultValue="anamnese" className="p-6">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="anamnese">Anamnese</TabsTrigger>
+                    <TabsTrigger value="medidas">Medidas</TabsTrigger>
+                    <TabsTrigger value="gasto-energetico">Gasto Energético</TabsTrigger>
+                    <TabsTrigger value="dieta">Criação de Dieta</TabsTrigger>
+                  </TabsList>
+
+                  {/* Aba Anamnese */}
+                  <TabsContent value="anamnese" className="space-y-6 mt-6">
+                    <div className="space-y-6">
+                      {/* Dados Pessoais */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <User className="h-5 w-5" />
+                            <span>Dados Pessoais</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Nome Completo *</label>
+                            <Input
+                              value={newPatientData.fullName}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, fullName: e.target.value}))}
+                              placeholder="Nome completo do paciente"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Data de Nascimento *</label>
+                            <Input
+                              type="date"
+                              value={newPatientData.birthDate}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, birthDate: e.target.value}))}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Sexo *</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.gender}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, gender: e.target.value}))}
+                            >
+                              <option value="">Selecione</option>
+                              <option value="MALE">Masculino</option>
+                              <option value="FEMALE">Feminino</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">CPF</label>
+                            <Input
+                              value={newPatientData.cpf}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, cpf: e.target.value}))}
+                              placeholder="000.000.000-00"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Email *</label>
+                            <Input
+                              type="email"
+                              value={newPatientData.email}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, email: e.target.value}))}
+                              placeholder="email@exemplo.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Telefone *</label>
+                            <Input
+                              value={newPatientData.phone}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, phone: e.target.value}))}
+                              placeholder="(11) 99999-9999"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">WhatsApp</label>
+                            <Input
+                              value={newPatientData.whatsapp}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, whatsapp: e.target.value}))}
+                              placeholder="(11) 99999-9999"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Profissão</label>
+                            <Input
+                              value={newPatientData.profession}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, profession: e.target.value}))}
+                              placeholder="Profissão do paciente"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Estado Civil</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.maritalStatus}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, maritalStatus: e.target.value}))}
+                            >
+                              <option value="">Selecione</option>
+                              <option value="solteiro">Solteiro(a)</option>
+                              <option value="casado">Casado(a)</option>
+                              <option value="divorciado">Divorciado(a)</option>
+                              <option value="viuvo">Viúvo(a)</option>
+                            </select>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Histórico Clínico */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Heart className="h-5 w-5" />
+                            <span>Histórico Clínico</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Histórico de Doenças</label>
+                            <Textarea
+                              value={newPatientData.clinicalHistory}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, clinicalHistory: e.target.value}))}
+                              placeholder="Doenças atuais e pregressas..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Histórico Familiar</label>
+                            <Textarea
+                              value={newPatientData.familyHistory}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, familyHistory: e.target.value}))}
+                              placeholder="Histórico de doenças na família..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Medicamentos em Uso</label>
+                            <Textarea
+                              value={newPatientData.medications}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, medications: e.target.value}))}
+                              placeholder="Medicamentos, dosagens e horários..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Alergias/Intolerâncias</label>
+                            <Textarea
+                              value={newPatientData.allergies}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, allergies: e.target.value}))}
+                              placeholder="Alergias alimentares e medicamentosas..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Hábitos de Vida */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Activity className="h-5 w-5" />
+                            <span>Hábitos de Vida</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Atividade Física</label>
+                            <Textarea
+                              value={newPatientData.physicalActivity}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, physicalActivity: e.target.value}))}
+                              placeholder="Tipo, frequência e intensidade..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Qualidade do Sono</label>
+                            <Input
+                              value={newPatientData.sleepQuality}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, sleepQuality: e.target.value}))}
+                              placeholder="Ex: 7-8 horas por noite"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Nível de Estresse</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.stressLevel}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, stressLevel: e.target.value}))}
+                            >
+                              <option value="baixo">Baixo</option>
+                              <option value="moderado">Moderado</option>
+                              <option value="alto">Alto</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Consumo de Água (L/dia)</label>
+                            <Input
+                              value={newPatientData.waterIntake}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, waterIntake: e.target.value}))}
+                              placeholder="Ex: 2.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Tabagismo</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.smoking}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, smoking: e.target.value}))}
+                            >
+                              <option value="nao">Não</option>
+                              <option value="atual">Fumante atual</option>
+                              <option value="ex">Ex-fumante</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Consumo de Álcool</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.alcohol}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, alcohol: e.target.value}))}
+                            >
+                              <option value="nao">Não consome</option>
+                              <option value="social">Social (fins de semana)</option>
+                              <option value="regular">Regular (durante a semana)</option>
+                            </select>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Hábitos Alimentares */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Utensils className="h-5 w-5" />
+                            <span>Hábitos Alimentares</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Número de Refeições/dia</label>
+                            <Input
+                              value={newPatientData.mealsPerDay}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, mealsPerDay: e.target.value}))}
+                              placeholder="Ex: 5-6 refeições"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Horários das Refeições</label>
+                            <Input
+                              value={newPatientData.mealTimes}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, mealTimes: e.target.value}))}
+                              placeholder="Ex: 7h, 10h, 13h, 16h, 19h"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Onde Faz as Refeições</label>
+                            <Input
+                              value={newPatientData.whereEats}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, whereEats: e.target.value}))}
+                              placeholder="Ex: Casa, trabalho, restaurante"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Quem Prepara as Refeições</label>
+                            <Input
+                              value={newPatientData.whoCooks}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, whoCooks: e.target.value}))}
+                              placeholder="Ex: Próprio paciente, cônjuge"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Alimentos Preferidos</label>
+                            <Textarea
+                              value={newPatientData.preferredFoods}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, preferredFoods: e.target.value}))}
+                              placeholder="Liste os alimentos favoritos..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Alimentos que Evita</label>
+                            <Textarea
+                              value={newPatientData.dislikedFoods}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, dislikedFoods: e.target.value}))}
+                              placeholder="Liste alimentos que não gosta..."
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Objetivo */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Target className="h-5 w-5" />
+                            <span>Objetivo do Tratamento</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Objetivo Principal</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.objective}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, objective: e.target.value}))}
+                            >
+                              <option value="">Selecione</option>
+                              <option value="Emagrecimento">Emagrecimento</option>
+                              <option value="Ganho de massa muscular">Ganho de massa muscular</option>
+                              <option value="Manutenção">Manutenção do peso</option>
+                              <option value="Melhora da saúde">Melhora da saúde</option>
+                              <option value="Controle de diabetes">Controle de diabetes</option>
+                              <option value="Controle do colesterol">Controle do colesterol</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Peso Meta (kg)</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.goalWeight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, goalWeight: e.target.value}))}
+                              placeholder="Ex: 70.0"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  {/* Aba Medidas */}
+                  <TabsContent value="medidas" className="space-y-6 mt-6">
+                    <div className="space-y-6">
+                      {/* Bioimpedância */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Zap className="h-5 w-5" />
+                            <span>Bioimpedância</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Peso (kg) *</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.weight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, weight: e.target.value}))}
+                              placeholder="Ex: 70.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Altura (m) *</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={newPatientData.height}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, height: e.target.value}))}
+                              placeholder="Ex: 1.75"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">IMC</label>
+                            <Input
+                              value={newPatientData.weight && newPatientData.height ? 
+                                (parseFloat(newPatientData.weight) / (parseFloat(newPatientData.height) ** 2)).toFixed(1) 
+                                : ''}
+                              disabled
+                              placeholder="Calculado automaticamente"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">% Gordura Corporal</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.bodyFat}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, bodyFat: e.target.value}))}
+                              placeholder="Ex: 15.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Massa Magra (kg)</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.muscleMass}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, muscleMass: e.target.value}))}
+                              placeholder="Ex: 55.2"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Água Corporal (%)</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.bodyWater}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, bodyWater: e.target.value}))}
+                              placeholder="Ex: 60.5"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Circunferências - Tronco */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Ruler className="h-5 w-5" />
+                            <span>Circunferências - Tronco (cm)</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Cintura</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.waist}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, waist: e.target.value}))}
+                              placeholder="Ex: 85.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Quadril</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.hip}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, hip: e.target.value}))}
+                              placeholder="Ex: 95.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Pescoço</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.neck}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, neck: e.target.value}))}
+                              placeholder="Ex: 38.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Tórax</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.chest}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, chest: e.target.value}))}
+                              placeholder="Ex: 98.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Abdômen</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.abdomen}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, abdomen: e.target.value}))}
+                              placeholder="Ex: 92.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Ombro</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.shoulder}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, shoulder: e.target.value}))}
+                              placeholder="Ex: 110.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Peitoral</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.pectoral}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, pectoral: e.target.value}))}
+                              placeholder="Ex: 105.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">RCQ (Cintura/Quadril)</label>
+                            <Input
+                              value={newPatientData.waist && newPatientData.hip ? 
+                                (parseFloat(newPatientData.waist) / parseFloat(newPatientData.hip)).toFixed(2) 
+                                : ''}
+                              disabled
+                              placeholder="Calculado automaticamente"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Circunferências - Membros Superiores */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Ruler className="h-5 w-5" />
+                            <span>Circunferências - Membros Superiores (cm)</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Braço Direito</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.armRight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, armRight: e.target.value}))}
+                              placeholder="Ex: 30.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Braço Esquerdo</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.armLeft}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, armLeft: e.target.value}))}
+                              placeholder="Ex: 30.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Antebraço Direito</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.forearmRight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, forearmRight: e.target.value}))}
+                              placeholder="Ex: 25.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Antebraço Esquerdo</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.forearmLeft}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, forearmLeft: e.target.value}))}
+                              placeholder="Ex: 25.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Punho Direito</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.wristRight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, wristRight: e.target.value}))}
+                              placeholder="Ex: 16.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Punho Esquerdo</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.wristLeft}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, wristLeft: e.target.value}))}
+                              placeholder="Ex: 16.0"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Circunferências - Membros Inferiores */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Ruler className="h-5 w-5" />
+                            <span>Circunferências - Membros Inferiores (cm)</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Coxa Proximal Direita</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.thighProximalRight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, thighProximalRight: e.target.value}))}
+                              placeholder="Ex: 58.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Coxa Proximal Esquerda</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.thighProximalLeft}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, thighProximalLeft: e.target.value}))}
+                              placeholder="Ex: 57.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Coxa Distal Direita</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.thighDistalRight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, thighDistalRight: e.target.value}))}
+                              placeholder="Ex: 45.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Coxa Distal Esquerda</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.thighDistalLeft}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, thighDistalLeft: e.target.value}))}
+                              placeholder="Ex: 44.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Panturrilha Direita</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.calfRight}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, calfRight: e.target.value}))}
+                              placeholder="Ex: 35.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Panturrilha Esquerda</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.calfLeft}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, calfLeft: e.target.value}))}
+                              placeholder="Ex: 35.0"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Dobras Cutâneas */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Scissors className="h-5 w-5" />
+                            <span>Dobras Cutâneas (mm)</span>
+                          </CardTitle>
+                          <CardDescription>
+                            Protocolo completo para avaliação de composição corporal
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Tricipital</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.triceps}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, triceps: e.target.value}))}
+                              placeholder="Ex: 12.5"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Bicipital</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.biceps}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, biceps: e.target.value}))}
+                              placeholder="Ex: 8.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Torácica/Peitoral</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.thoracic}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, thoracic: e.target.value}))}
+                              placeholder="Ex: 10.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Subescapular</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.subscapular}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, subscapular: e.target.value}))}
+                              placeholder="Ex: 15.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Axilar Média</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.midaxillary}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, midaxillary: e.target.value}))}
+                              placeholder="Ex: 14.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Supraespinhal</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.supraspinal}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, supraspinal: e.target.value}))}
+                              placeholder="Ex: 16.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Suprailíaca</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.suprailiac}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, suprailiac: e.target.value}))}
+                              placeholder="Ex: 18.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Abdominal</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.abdominal}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, abdominal: e.target.value}))}
+                              placeholder="Ex: 20.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Coxa</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.thighSkinfold}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, thighSkinfold: e.target.value}))}
+                              placeholder="Ex: 22.0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Panturrilha</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={newPatientData.calfSkinfold}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, calfSkinfold: e.target.value}))}
+                              placeholder="Ex: 10.0"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  {/* Aba Gasto Energético */}
+                  <TabsContent value="gasto-energetico" className="space-y-6 mt-6">
+                    <div className="space-y-6">
+                      {/* Seleção de Equação */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Calculator className="h-5 w-5" />
+                            <span>Método de Cálculo</span>
+                          </CardTitle>
+                          <CardDescription>
+                            Escolha a equação mais adequada para o perfil do paciente
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Equação para TMB</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.tmbEquation}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, tmbEquation: e.target.value as TMBEquation}))}
+                            >
+                              <option value="MIFFLIN_ST_JEOR">Mifflin-St Jeor (Recomendada)</option>
+                              <option value="HARRIS_BENEDICT_REVISED">Harris-Benedict Revisada</option>
+                              <option value="HARRIS_BENEDICT_ORIGINAL">Harris-Benedict Original</option>
+                              <option value="KATCH_MCARDLE">Katch-McArdle (Requer % gordura)</option>
+                            </select>
+                            {(() => {
+                              const equationInfo = getEquationInfo(newPatientData.tmbEquation as TMBEquation);
+                              return equationInfo ? (
+                                <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded">
+                                  <strong>{equationInfo.name}:</strong> {equationInfo.description}
+                                  <br />
+                                  <strong>Melhor para:</strong> {equationInfo.bestFor}
+                                </div>
+                              ) : null;
+                            })()}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Nível de Atividade Física</label>
+                            <select 
+                              className="w-full p-2 border border-border rounded-md"
+                              value={newPatientData.activityLevel}
+                              onChange={(e) => setNewPatientData(prev => ({...prev, activityLevel: e.target.value}))}
+                            >
+                              <option value="sedentario">Sedentário (pouco ou nenhum exercício)</option>
+                              <option value="leve">Leve (exercício leve 1-3 dias/semana)</option>
+                              <option value="moderado">Moderado (exercício moderado 3-5 dias/semana)</option>
+                              <option value="intenso">Intenso (exercício intenso 6-7 dias/semana)</option>
+                              <option value="extremo">Extremo (exercício muito intenso, trabalho físico)</option>
+                            </select>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Condições Especiais */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Heart className="h-5 w-5" />
+                            <span>Condições Especiais</span>
+                          </CardTitle>
+                          <CardDescription>
+                            Ajustes para condições fisiológicas e médicas específicas
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Gestação */}
+                            <div className="space-y-2">
+                              <label className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={newPatientData.isPregnant}
+                                  onChange={(e) => setNewPatientData(prev => ({...prev, isPregnant: e.target.checked}))}
+                                />
+                                <span className="text-sm font-medium">Gestante</span>
+                              </label>
+                              {newPatientData.isPregnant && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <select
+                                    className="p-2 border border-border rounded-md text-sm"
+                                    value={newPatientData.pregnancyTrimester}
+                                    onChange={(e) => setNewPatientData(prev => ({...prev, pregnancyTrimester: e.target.value as '1' | '2' | '3'}))}
+                                  >
+                                    <option value="">Trimestre</option>
+                                    <option value="1">1º Trimestre</option>
+                                    <option value="2">2º Trimestre</option>
+                                    <option value="3">3º Trimestre</option>
+                                  </select>
+                                  <Input
+                                    type="number"
+                                    placeholder="Semanas"
+                                    value={newPatientData.pregnancyWeeks}
+                                    onChange={(e) => setNewPatientData(prev => ({...prev, pregnancyWeeks: e.target.value}))}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Lactação */}
+                            <div className="space-y-2">
+                              <label className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={newPatientData.isLactating}
+                                  onChange={(e) => setNewPatientData(prev => ({...prev, isLactating: e.target.checked}))}
+                                />
+                                <span className="text-sm font-medium">Lactante</span>
+                              </label>
+                              {newPatientData.isLactating && (
+                                <select
+                                  className="w-full p-2 border border-border rounded-md text-sm"
+                                  value={newPatientData.lactationType}
+                                  onChange={(e) => setNewPatientData(prev => ({...prev, lactationType: e.target.value as 'EXCLUSIVE' | 'PARTIAL'}))}
+                                >
+                                  <option value="">Tipo de Lactação</option>
+                                  <option value="EXCLUSIVE">Exclusiva</option>
+                                  <option value="PARTIAL">Parcial</option>
+                                </select>
+                              )}
+                            </div>
+
+                            {/* Condições Médicas */}
+                            <div className="space-y-2">
+                              <label className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={newPatientData.hasThyroidIssues}
+                                  onChange={(e) => setNewPatientData(prev => ({...prev, hasThyroidIssues: e.target.checked}))}
+                                />
+                                <span className="text-sm font-medium">Problemas de Tireoide</span>
+                              </label>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={newPatientData.hasDiabetes}
+                                  onChange={(e) => setNewPatientData(prev => ({...prev, hasDiabetes: e.target.checked}))}
+                                />
+                                <span className="text-sm font-medium">Diabetes</span>
+                              </label>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={newPatientData.hasMetabolicDisorder}
+                                  onChange={(e) => setNewPatientData(prev => ({...prev, hasMetabolicDisorder: e.target.checked}))}
+                                />
+                                <span className="text-sm font-medium">Distúrbio Metabólico</span>
+                              </label>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Medicamentos que afetam metabolismo</label>
+                              <Textarea
+                                placeholder="Ex: Corticoides, antidepressivos, etc."
+                                value={newPatientData.medicationsAffectingMetabolism}
+                                onChange={(e) => setNewPatientData(prev => ({...prev, medicationsAffectingMetabolism: e.target.value}))}
+                                rows={2}
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Calculator className="h-5 w-5" />
+                            <span>Resultados dos Cálculos</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+
+                          {/* Cards com Cálculos */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <Activity className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">TMB</p>
+                                <p className="text-xl font-bold">
+                                  {newPatientData.weight && newPatientData.height && newPatientData.gender && newPatientData.birthDate ? 
+                                    (() => {
+                                      const age = new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear();
+                                      const tmb = newPatientData.gender === 'MALE' 
+                                        ? 88.362 + (13.397 * parseFloat(newPatientData.weight)) + (4.799 * (parseFloat(newPatientData.height) * 100)) - (5.677 * age)
+                                        : 447.593 + (9.247 * parseFloat(newPatientData.weight)) + (3.098 * (parseFloat(newPatientData.height) * 100)) - (4.330 * age);
+                                      return Math.round(tmb);
+                                    })()
+                                    : '---'
+                                  } kcal
+                                </p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">GET Total</p>
+                                <p className="text-xl font-bold">
+                                  {newPatientData.weight && newPatientData.height && newPatientData.gender && newPatientData.birthDate ? 
+                                    (() => {
+                                      const age = new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear();
+                                      const tmb = newPatientData.gender === 'MALE' 
+                                        ? 88.362 + (13.397 * parseFloat(newPatientData.weight)) + (4.799 * (parseFloat(newPatientData.height) * 100)) - (5.677 * age)
+                                        : 447.593 + (9.247 * parseFloat(newPatientData.weight)) + (3.098 * (parseFloat(newPatientData.height) * 100)) - (4.330 * age);
+                                      const multipliers = { sedentario: 1.2, leve: 1.375, moderado: 1.55, intenso: 1.725, extremo: 1.9 };
+                                      return Math.round(tmb * multipliers[newPatientData.activityLevel as keyof typeof multipliers]);
+                                    })()
+                                    : '---'
+                                  } kcal
+                                </p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <Target className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">Meta Calórica</p>
+                                <p className="text-xl font-bold">
+                                  {newPatientData.weight && newPatientData.height && newPatientData.gender && newPatientData.birthDate ? 
+                                    (() => {
+                                      const age = new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear();
+                                      const tmb = newPatientData.gender === 'MALE' 
+                                        ? 88.362 + (13.397 * parseFloat(newPatientData.weight)) + (4.799 * (parseFloat(newPatientData.height) * 100)) - (5.677 * age)
+                                        : 447.593 + (9.247 * parseFloat(newPatientData.weight)) + (3.098 * (parseFloat(newPatientData.height) * 100)) - (4.330 * age);
+                                      const multipliers = { sedentario: 1.2, leve: 1.375, moderado: 1.55, intenso: 1.725, extremo: 1.9 };
+                                      const get = tmb * multipliers[newPatientData.activityLevel as keyof typeof multipliers];
+                                      // Ajuste baseado no objetivo
+                                      const adjustment = newPatientData.objective === 'Emagrecimento' ? 0.85 :
+                                                       newPatientData.objective === 'Ganho de massa muscular' ? 1.15 : 1;
+                                      return Math.round(get * adjustment);
+                                    })()
+                                    : '---'
+                                  } kcal
+                                </p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground">Atividade</p>
+                                <p className="text-sm font-bold capitalize">{newPatientData.activityLevel}</p>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          {/* Distribuição de Macronutrientes */}
+                          <div>
+                            <h3 className="text-lg font-semibold mb-4">Distribuição de Macronutrientes</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <Card>
+                                <CardContent className="p-4">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <Wheat className="h-4 w-4 text-yellow-600" />
+                                    <span className="font-medium">Carboidratos</span>
+                                  </div>
+                                  <p className="text-2xl font-bold">50%</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {newPatientData.weight && newPatientData.height && newPatientData.gender && newPatientData.birthDate ? 
+                                      (() => {
+                                        const age = new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear();
+                                        const tmb = newPatientData.gender === 'MALE' 
+                                          ? 88.362 + (13.397 * parseFloat(newPatientData.weight)) + (4.799 * (parseFloat(newPatientData.height) * 100)) - (5.677 * age)
+                                          : 447.593 + (9.247 * parseFloat(newPatientData.weight)) + (3.098 * (parseFloat(newPatientData.height) * 100)) - (4.330 * age);
+                                        const multipliers = { sedentario: 1.2, leve: 1.375, moderado: 1.55, intenso: 1.725, extremo: 1.9 };
+                                        const get = tmb * multipliers[newPatientData.activityLevel as keyof typeof multipliers];
+                                        const adjustment = newPatientData.objective === 'Emagrecimento' ? 0.85 :
+                                                         newPatientData.objective === 'Ganho de massa muscular' ? 1.15 : 1;
+                                        const calories = get * adjustment;
+                                        return Math.round(calories * 0.5 / 4);
+                                      })()
+                                      : '---'
+                                    }g
+                                  </p>
+                                </CardContent>
+                              </Card>
+                              <Card>
+                                <CardContent className="p-4">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <Beef className="h-4 w-4 text-red-600" />
+                                    <span className="font-medium">Proteínas</span>
+                                  </div>
+                                  <p className="text-2xl font-bold">20%</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {newPatientData.weight && newPatientData.height && newPatientData.gender && newPatientData.birthDate ? 
+                                      (() => {
+                                        const age = new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear();
+                                        const tmb = newPatientData.gender === 'MALE' 
+                                          ? 88.362 + (13.397 * parseFloat(newPatientData.weight)) + (4.799 * (parseFloat(newPatientData.height) * 100)) - (5.677 * age)
+                                          : 447.593 + (9.247 * parseFloat(newPatientData.weight)) + (3.098 * (parseFloat(newPatientData.height) * 100)) - (4.330 * age);
+                                        const multipliers = { sedentario: 1.2, leve: 1.375, moderado: 1.55, intenso: 1.725, extremo: 1.9 };
+                                        const get = tmb * multipliers[newPatientData.activityLevel as keyof typeof multipliers];
+                                        const adjustment = newPatientData.objective === 'Emagrecimento' ? 0.85 :
+                                                         newPatientData.objective === 'Ganho de massa muscular' ? 1.15 : 1;
+                                        const calories = get * adjustment;
+                                        return Math.round(calories * 0.2 / 4);
+                                      })()
+                                      : '---'
+                                    }g
+                                  </p>
+                                </CardContent>
+                              </Card>
+                              <Card>
+                                <CardContent className="p-4">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <Apple className="h-4 w-4 text-green-600" />
+                                    <span className="font-medium">Gorduras</span>
+                                  </div>
+                                  <p className="text-2xl font-bold">30%</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {newPatientData.weight && newPatientData.height && newPatientData.gender && newPatientData.birthDate ? 
+                                      (() => {
+                                        const age = new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear();
+                                        const tmb = newPatientData.gender === 'MALE' 
+                                          ? 88.362 + (13.397 * parseFloat(newPatientData.weight)) + (4.799 * (parseFloat(newPatientData.height) * 100)) - (5.677 * age)
+                                          : 447.593 + (9.247 * parseFloat(newPatientData.weight)) + (3.098 * (parseFloat(newPatientData.height) * 100)) - (4.330 * age);
+                                        const multipliers = { sedentario: 1.2, leve: 1.375, moderado: 1.55, intenso: 1.725, extremo: 1.9 };
+                                        const get = tmb * multipliers[newPatientData.activityLevel as keyof typeof multipliers];
+                                        const adjustment = newPatientData.objective === 'Emagrecimento' ? 0.85 :
+                                                         newPatientData.objective === 'Ganho de massa muscular' ? 1.15 : 1;
+                                        const calories = get * adjustment;
+                                        return Math.round(calories * 0.3 / 9);
+                                      })()
+                                      : '---'
+                                    }g
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  {/* Aba Criação de Dieta */}
+                  <TabsContent value="dieta" className="space-y-6 mt-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <ChefHat className="h-5 w-5" />
+                          <span>Plano Alimentar</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Resumo das Metas */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Meta Calórica</p>
+                            <p className="text-lg font-bold">
+                              {newPatientData.weight && newPatientData.height && newPatientData.gender && newPatientData.birthDate ? 
+                                (() => {
+                                  const age = new Date().getFullYear() - new Date(newPatientData.birthDate).getFullYear();
+                                  const tmb = newPatientData.gender === 'MALE' 
+                                    ? 88.362 + (13.397 * parseFloat(newPatientData.weight)) + (4.799 * (parseFloat(newPatientData.height) * 100)) - (5.677 * age)
+                                    : 447.593 + (9.247 * parseFloat(newPatientData.weight)) + (3.098 * (parseFloat(newPatientData.height) * 100)) - (4.330 * age);
+                                  const multipliers = { sedentario: 1.2, leve: 1.375, moderado: 1.55, intenso: 1.725, extremo: 1.9 };
+                                  const get = tmb * multipliers[newPatientData.activityLevel as keyof typeof multipliers];
+                                  const adjustment = newPatientData.objective === 'Emagrecimento' ? 0.85 :
+                                                   newPatientData.objective === 'Ganho de massa muscular' ? 1.15 : 1;
+                                  return Math.round(get * adjustment);
+                                })()
+                                : '---'
+                              } kcal
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Carboidratos</p>
+                            <p className="text-lg font-bold">50%</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Proteínas</p>
+                            <p className="text-lg font-bold">20%</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Gorduras</p>
+                            <p className="text-lg font-bold">30%</p>
+                          </div>
+                        </div>
+
+                        {/* Refeições */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center space-x-2">
+                              <Clock className="h-4 w-4" />
+                              <span>Café da Manhã</span>
+                            </label>
+                            <Textarea
+                              placeholder="Ex: 1 fatia de pão integral + 1 ovo cozido + 1 copo de leite desnatado..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center space-x-2">
+                              <Apple className="h-4 w-4" />
+                              <span>Lanche da Manhã</span>
+                            </label>
+                            <Textarea
+                              placeholder="Ex: 1 banana + 1 col. sopa de aveia..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center space-x-2">
+                              <Utensils className="h-4 w-4" />
+                              <span>Almoço</span>
+                            </label>
+                            <Textarea
+                              placeholder="Ex: 4 col. sopa de arroz integral + 1 filé de frango grelhado + salada..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center space-x-2">
+                              <Apple className="h-4 w-4" />
+                              <span>Lanche da Tarde</span>
+                            </label>
+                            <Textarea
+                              placeholder="Ex: 1 iogurte natural + 1 col. sopa de granola..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center space-x-2">
+                              <Utensils className="h-4 w-4" />
+                              <span>Jantar</span>
+                            </label>
+                            <Textarea
+                              placeholder="Ex: Sopa de legumes + 1 fatia de pão integral + 1 fatia de queijo..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center space-x-2">
+                              <Clock className="h-4 w-4" />
+                              <span>Ceia (Opcional)</span>
+                            </label>
+                            <Textarea
+                              placeholder="Ex: 1 xícara de chá de camomila + 2 castanhas..."
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Observações Gerais</label>
+                            <Textarea
+                              placeholder="Instruções especiais, dicas de preparo, horários..."
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Restrições e Substituições</label>
+                            <Textarea
+                              placeholder="Alimentos a evitar, opções de substituição..."
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Footer com Botões */}
+              <div className="border-t p-6">
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsCreatingNew(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveNewPatient} className="bg-green-600 hover:bg-green-700">
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar Prontuário
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </NutritionistLayout>
+  )
+}

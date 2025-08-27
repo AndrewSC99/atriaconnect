@@ -1,0 +1,21 @@
+{
+  "data": "2025-08-24T19:36:52.840Z",
+  "totais": {
+    "taco": 597,
+    "ibge_atual": 1963,
+    "ibge_esperado": 1971,
+    "ibge_faltando": 8
+  },
+  "qualidade": {
+    "sem_minerais": 1089,
+    "sem_vitaminas": 853,
+    "sem_ambos": 615,
+    "com_tudo": 636,
+    "com_parcial": 1348
+  },
+  "percentuais": {
+    "cobertura_ibge": "99.6%",
+    "sem_minerais": "55.5%",
+    "sem_vitaminas": "43.5%"
+  }
+}

@@ -1,0 +1,6 @@
+[2025-08-24T14:04:18.110Z] Carregados dados de 21 alimentos do arquivo JSON
+[2025-08-24T14:04:18.111Z] Script de criação de tabelas gerado: create_tables.sql
+[2025-08-24T14:04:18.112Z] Script SQL gerado: import_foods_data.sql
+[2025-08-24T14:04:18.113Z] Script Node.js gerado: node_importer.js
+[2025-08-24T14:04:18.128Z] Relatório gerado: import_report.txt
+[2025-08-24T14:04:18.128Z] === IMPORTAÇÃO CONCLUÍDA COM SUCESSO ===
